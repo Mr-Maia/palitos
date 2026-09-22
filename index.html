@@ -607,8 +607,8 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
     const tiny = G.regions.filter((f) => path.area(f) < 40);
     const dots = layer.append('g');
     for (const f of tiny) {
-      const c = path.centroid(f);
-      if (!isFinite(c[0])) continue;
+      const c = dotPosition(f, path, proj);
+      if (!c) continue;
       const dot = dots.append('circle').attr('class', 'rg dot').attr('cx', c[0]).attr('cy', c[1]).attr('r', 6).datum(f);
       dots.append('circle').attr('class', 'hit').attr('cx', c[0]).attr('cy', c[1]).attr('r', 14)
         .on('click', () => onPick(f.properties.n));
@@ -624,6 +624,30 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 
     zoom.scaleExtent([1, G.mode === 'portugal' ? 6 : 14]).translateExtent([[-w * 0.25, -h * 0.25], [w * 1.25, h * 1.25]]);
     svg.call(zoom.transform, d3.zoomIdentity);
+  }
+
+  // Onde pôr a bola de um país pequeno: no centro, se o centro cair dentro do país.
+  // Em formas côncavas (ex.: Israel) o centro cai fora; aí usa o ponto mais interior do país.
+  // Arquipélagos (ex.: Bahamas) ficam no centro, entre as ilhas.
+  function dotPosition(f, path, proj) {
+    const c = path.centroid(f);
+    if (!isFinite(c[0])) return null;
+    if (d3.geoContains(f, proj.invert(c))) return c;
+    if (f.geometry.type === 'MultiPolygon' && f.geometry.coordinates.length > 1) return c;
+    const [[x0, y0], [x1, y1]] = path.bounds(f);
+    const n = 16, sx = (x1 - x0) / n, sy = (y1 - y0) / n;
+    const ins = [], outs = [];
+    for (let i = -1; i <= n + 1; i++) for (let j = -1; j <= n + 1; j++) {
+      const p = [x0 + i * sx, y0 + j * sy];
+      (i >= 0 && i <= n && j >= 0 && j <= n && d3.geoContains(f, proj.invert(p)) ? ins : outs).push(p);
+    }
+    let best = null, bestD = -1;
+    for (const p of ins) {
+      let d = Infinity;
+      for (const q of outs) d = Math.min(d, (p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2);
+      if (d > bestD) { bestD = d; best = p; }
+    }
+    return best || c;
   }
 
   function current() { return G.queue[G.idx]; }
