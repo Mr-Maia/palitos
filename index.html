@@ -444,15 +444,15 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 <script src="audio.js"></script>
 <script>
 (() => {
-  // Cada modo: nome, projeção (rotação do globo) e caixa lon/lat a enquadrar.
+  // Cada modo: nome e caixa lon/lat a enquadrar (projeção de Mercator, como nos mapas habituais).
   const MODES = {
     portugal: { name: 'Portugal', unit: 'distritos' },
-    europa:  { name: 'Europa',            rotate: [-15, -52],  box: [[-25, 34], [45, 71]] },
-    africa:  { name: 'África',            rotate: [-17, -2],   box: [[-20, -36], [52, 38]] },
-    asia:    { name: 'Ásia',              rotate: [-88, -28],  box: [[26, -11], [148, 55]] },
-    anorte:  { name: 'América do Norte',  rotate: [98, -35],   box: [[-168, 7], [-55, 72]] },
-    asul:    { name: 'América do Sul',    rotate: [60, 20],    box: [[-82, -56], [-34, 13]] },
-    oceania: { name: 'Oceânia',           rotate: [-165, 15],  box: [[112, -48], [-172, 12]] },
+    europa:  { name: 'Europa',            box: [[-25, 34], [45, 71]] },
+    africa:  { name: 'África',            box: [[-20, -36], [52, 38]] },
+    asia:    { name: 'Ásia',              box: [[26, -11], [148, 55]] },
+    anorte:  { name: 'América do Norte',  box: [[-168, 7], [-52, 70]] },
+    asul:    { name: 'América do Sul',    box: [[-82, -56], [-34, 13]] },
+    oceania: { name: 'Oceânia',           box: [[112, -48], [-172, 12]] },
   };
   const CONTINENTS = ['europa', 'africa', 'asia', 'anorte', 'asul', 'oceania'];
   const HINT_AFTER = 5; // erros até o mapa piscar o sítio certo
@@ -497,7 +497,11 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
     if (mode === 'portugal') {
       return d3.geoMercator().fitExtent([[pad, pad], [w - pad, h - pad]], { type: 'FeatureCollection', features: portugal });
     }
-    return d3.geoAzimuthalEqualArea().rotate(m.rotate).clipAngle(100)
+    // Roda só na longitude (o norte fica sempre para cima) para centrar o continente,
+    // o que também resolve a Oceânia, que atravessa a linha de mudança de data.
+    let [[x0], [x1]] = m.box;
+    if (x1 < x0) x1 += 360;
+    return d3.geoMercator().rotate([-(x0 + x1) / 2, 0])
       .fitExtent([[pad, pad], [w - pad, h - pad]], boxPoints(m.box));
   }
 
