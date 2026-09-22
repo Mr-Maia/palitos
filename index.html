@@ -306,7 +306,29 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
   .float-btns { top: 8px; gap: 6px; }
   .float-btns .icon-btn { width: 38px; height: 38px; }
   .float-btns .sep { height: 0; }
-  .ask { padding-block: 8px calc(env(safe-area-inset-bottom, 0px) + 8px); }
+  /* O nome a encontrar vai para a barra de cima: o mapa fica com o ecrã todo. */
+  #game {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-areas: "top" "map";
+  }
+  .topbar { position: relative; }
+  .topbar .title b { visibility: hidden; }
+  .progress { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; margin: 0; border-radius: 0; }
+  .ask {
+    grid-area: top; align-self: center; justify-self: center; z-index: 3;
+    display: flex; flex-direction: row; align-items: center; gap: 10px;
+    max-width: calc(100% - 2 * (max(12px, env(safe-area-inset-right, 0px)) + 130px));
+    background: none; border: none; padding: 0; pointer-events: none;
+  }
+  .ask .lbl { flex: none; font-size: 11px; }
+  .ask .target {
+    font-size: clamp(17px, 3.2vw, 24px); margin: 0; min-width: 0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; overflow-wrap: normal;
+  }
+  .tries { flex: none; height: auto; gap: 4px; }
+  .tries i { width: 14px; height: 5px; }
+  .tries-note { display: none; }
   .end { padding: 10px; }
   .end .sheet { padding: 16px; max-width: 520px; }
   .end h2 { font-size: 24px; }

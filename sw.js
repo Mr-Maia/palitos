@@ -1,5 +1,5 @@
 // Guarda a app em cache para abrir sem rede depois da primeira visita.
-const CACHE = 'aponta-v2';
+const CACHE = 'aponta-v3';
 const FILES = [
   './', 'index.html', 'manifest.webmanifest',
   'data/mundo.json', 'data/portugal.json',
