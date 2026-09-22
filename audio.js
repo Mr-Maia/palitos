@@ -5,7 +5,7 @@
   try { prefs = Object.assign(prefs, JSON.parse(localStorage.getItem(PREFS_KEY)) || {}); } catch {}
   const save = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)); } catch {} };
 
-  let ctx = null, master, musicBus, sfxBus, delayIn;
+  let ctx = null, master, musicBus, sfxBus, reverbIn;
   const listeners = new Set();
   const emit = () => listeners.forEach((fn) => fn({ ...prefs }));
 
@@ -29,12 +29,10 @@
     sfxBus = ctx.createGain(); sfxBus.gain.value = 0.8;
     sfxBus.connect(master);
 
-    // Eco suave para a melodia.
-    delayIn = ctx.createGain(); delayIn.gain.value = 0.35;
-    const delay = ctx.createDelay(1); delay.delayTime.value = 0.56;
-    const fb = ctx.createGain(); fb.gain.value = 0.32;
-    const tone = ctx.createBiquadFilter(); tone.type = 'lowpass'; tone.frequency.value = 2200;
-    delayIn.connect(delay); delay.connect(tone); tone.connect(fb); fb.connect(delay); tone.connect(musicBus);
+    // Reverberação partilhada pela música.
+    reverbIn = ctx.createGain(); reverbIn.gain.value = 0.35;
+    const verb = makeReverb();
+    reverbIn.connect(verb).connect(musicBus);
   }
 
   function unlock(e) {
@@ -61,107 +59,152 @@
     g.gain.exponentialRampToValueAtTime(0.0001, t + a + d);
   }
 
-  function pluck(dest, note, t, { vol = 0.12, decay = 0.5, type = 'sine', echo = false } = {}) {
+  // Usado pelos efeitos sonoros.
+  function pluck(dest, note, t, { vol = 0.12, decay = 0.5, type = 'sine' } = {}) {
     const o = ctx.createOscillator(), o2 = ctx.createOscillator(), g = ctx.createGain();
     o.type = type; o.frequency.value = midi(note);
     o2.type = 'sine'; o2.frequency.value = midi(note + 12);
     const g2 = ctx.createGain(); g2.gain.value = 0.18;
     o.connect(g); o2.connect(g2).connect(g); g.connect(dest);
-    if (echo) g.connect(delayIn);
     env(g, t, 0.006, vol, decay);
     o.start(t); o2.start(t); o.stop(t + decay + 0.05); o2.stop(t + decay + 0.05);
   }
 
-  function pad(notes, t, dur) {
-    const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 850; f.Q.value = 0.4;
-    const g = ctx.createGain();
+  // Piano suave: quase só a nota pura, com um filtro que fecha à medida que a nota se apaga.
+  function keys(note, t, dur, vol) {
+    const f = ctx.createBiquadFilter(), g = ctx.createGain();
+    f.type = 'lowpass'; f.Q.value = 0.3;
+    f.frequency.setValueAtTime(1800, t);
+    f.frequency.exponentialRampToValueAtTime(500, t + dur + 0.8);
+    const len = dur + 1.2;
     g.gain.setValueAtTime(0.0001, t);
-    g.gain.linearRampToValueAtTime(0.05, t + 0.9);
-    g.gain.setValueAtTime(0.05, t + dur - 0.6);
-    g.gain.linearRampToValueAtTime(0.0001, t + dur + 0.4);
-    f.connect(g).connect(musicBus);
-    for (const n of notes) for (const det of [-6, 6]) {
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.012);
+    g.gain.exponentialRampToValueAtTime(vol * 0.45, t + 0.35);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+    f.connect(g); g.connect(musicBus); g.connect(reverbIn);
+    [[1, 1], [2, 0.12], [3, 0.03]].forEach(([mult, amp]) => {
+      const o = ctx.createOscillator(), og = ctx.createGain();
+      o.type = 'sine'; o.frequency.value = midi(note) * mult; og.gain.value = amp;
+      o.connect(og).connect(f); o.start(t); o.stop(t + len + 0.05);
+    });
+  }
+
+  // Fundo de acordes, muito suave e abafado.
+  function pad(notes, t, dur) {
+    const f = ctx.createBiquadFilter(), g = ctx.createGain();
+    f.type = 'lowpass'; f.frequency.value = 520; f.Q.value = 0.2;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(0.022, t + 1.2);
+    g.gain.setValueAtTime(0.022, t + dur - 0.4);
+    g.gain.linearRampToValueAtTime(0.0001, t + dur + 0.8);
+    f.connect(g); g.connect(musicBus); g.connect(reverbIn);
+    for (const n of notes) {
       const o = ctx.createOscillator();
-      o.type = 'triangle'; o.frequency.value = midi(n); o.detune.value = det;
-      o.connect(f); o.start(t); o.stop(t + dur + 0.5);
+      o.type = 'sine'; o.frequency.value = midi(n);
+      o.connect(f); o.start(t); o.stop(t + dur + 1);
     }
   }
 
-  function bass(note, t) {
-    const o = ctx.createOscillator(), g = ctx.createGain();
-    o.type = 'sine'; o.frequency.value = midi(note);
-    o.connect(g).connect(musicBus);
-    env(g, t, 0.02, 0.16, 0.9);
-    o.start(t); o.stop(t + 1);
-  }
-
-  let noiseBuf = null;
-  function noise() {
-    if (!noiseBuf) {
-      noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 0.5, ctx.sampleRate);
-      const d = noiseBuf.getChannelData(0);
-      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  // Sala: reverberação gerada (ruído que se apaga), para o som ficar quente e redondo.
+  function makeReverb() {
+    const len = Math.floor(ctx.sampleRate * 2.6);
+    const buf = ctx.createBuffer(2, len, ctx.sampleRate);
+    for (let c = 0; c < 2; c++) {
+      const d = buf.getChannelData(c);
+      let last = 0;
+      for (let i = 0; i < len; i++) {
+        last = last * 0.6 + (Math.random() * 2 - 1) * 0.4; // ruído já abafado
+        d[i] = last * Math.pow(1 - i / len, 3);
+      }
     }
-    const s = ctx.createBufferSource(); s.buffer = noiseBuf; return s;
-  }
-  function shaker(t, vol) {
-    const s = noise(), f = ctx.createBiquadFilter(), g = ctx.createGain();
-    f.type = 'highpass'; f.frequency.value = 7000;
-    s.connect(f).connect(g).connect(musicBus);
-    env(g, t, 0.004, vol, 0.06);
-    s.start(t); s.stop(t + 0.1);
+    const conv = ctx.createConvolver(); conv.buffer = buf;
+    return conv;
   }
 
   // ---------- música ----------
-  // Progressão calma em Dó: Cmaj9 – Am9 – Fmaj9 – G6, 2 compassos cada, a 84 bpm.
-  const CHORDS = [
-    { root: 36, pad: [52, 55, 59, 62], scale: [72, 74, 76, 79, 81, 83] },
-    { root: 33, pad: [48, 52, 55, 59], scale: [69, 72, 74, 76, 79, 81] },
-    { root: 29, pad: [45, 48, 52, 55], scale: [69, 72, 74, 76, 77, 81] },
-    { root: 31, pad: [47, 50, 52, 55], scale: [71, 74, 76, 79, 81, 83] },
+  // Melodia composta em Dó maior, 72 bpm, 16 compassos (parte A + parte B).
+  const BPM = 72, BEAT = 60 / BPM;
+  const CH = {
+    C:  { bass: 48, pad: [52, 55, 60], arp: [60, 64, 67, 64] },
+    Am: { bass: 45, pad: [52, 57, 60], arp: [57, 60, 64, 60] },
+    F:  { bass: 41, pad: [53, 57, 60], arp: [57, 60, 65, 60] },
+    G:  { bass: 43, pad: [50, 55, 59], arp: [55, 59, 62, 59] },
+    Dm: { bass: 50, pad: [50, 53, 57], arp: [57, 62, 65, 62] },
+    Em: { bass: 52, pad: [52, 55, 59], arp: [55, 59, 64, 59] },
+  };
+  const PROG = ['C', 'Am', 'F', 'G', 'C', 'Am', 'Dm', 'G', 'F', 'G', 'Em', 'Am', 'F', 'G', 'C', 'C'];
+  // [nota, duração em tempos]; null = pausa
+  const MELODY = [
+    [[76, 1.5], [74, 0.5], [72, 1], [74, 1]],
+    [[76, 2], [72, 1], [69, 1]],
+    [[69, 1.5], [72, 0.5], [77, 1], [76, 1]],
+    [[74, 3], [null, 1]],
+    [[76, 1.5], [74, 0.5], [72, 1], [74, 1]],
+    [[76, 1], [79, 1], [81, 2]],
+    [[77, 1], [76, 1], [74, 1], [72, 1]],
+    [[74, 2], [71, 1], [74, 1]],
+    [[72, 1], [77, 1], [81, 1.5], [79, 0.5]],
+    [[79, 1], [77, 1], [74, 2]],
+    [[76, 1], [79, 1], [83, 1.5], [81, 0.5]],
+    [[81, 3], [null, 1]],
+    [[81, 1], [79, 1], [77, 1], [76, 1]],
+    [[74, 1], [76, 1], [77, 1], [79, 1]],
+    [[76, 2], [74, 1], [72, 1]],
+    [[72, 3], [null, 1]],
   ];
-  const BPM = 84, EIGHTH = 60 / BPM / 2, BAR = EIGHTH * 8;
-  let playing = false, timer = null, nextTime = 0, step = 0, lastNote = 76;
+  const LOOP_BEATS = PROG.length * 4;
 
-  function scheduleStep(t) {
-    const bar = Math.floor(step / 8), inBar = step % 8;
-    const chord = CHORDS[Math.floor(bar / 2) % CHORDS.length];
-    if (inBar === 0 && bar % 2 === 0) pad(chord.pad, t, BAR * 2);
-    if (inBar === 0) bass(chord.root, t);
-    if (inBar === 4) bass(chord.root + 7, t);
-    if (inBar % 2 === 1) shaker(t, 0.018);
-
-    // Melodia: passos pequenos na escala do acorde, com pausas para respirar.
-    const phrase = Math.floor(bar / 4) % 2;
-    const density = phrase === 0 ? 0.45 : 0.6;
-    if (Math.random() < density && !(inBar === 7 && bar % 2 === 1)) {
-      const sc = chord.scale;
-      let i = sc.indexOf(sc.reduce((a, b) => Math.abs(b - lastNote) < Math.abs(a - lastNote) ? b : a));
-      i = Math.max(0, Math.min(sc.length - 1, i + [-2, -1, -1, 0, 1, 1, 2][Math.floor(Math.random() * 7)]));
-      lastNote = sc[i];
-      pluck(musicBus, lastNote, t, { vol: 0.07, decay: 0.7, type: 'triangle', echo: true });
-    }
-    step = (step + 1) % (8 * 2 * CHORDS.length * 2);
+  // Lista de eventos de uma volta completa, ordenada no tempo.
+  function buildLoop(round) {
+    const ev = [];
+    PROG.forEach((name, bar) => {
+      const c = CH[name], b0 = bar * 4;
+      if (bar === 0 || PROG[bar - 1] !== name) {
+        let len = 1; while (PROG[bar + len] === name) len++;
+        ev.push({ at: b0, fn: (t) => pad(c.pad, t, len * 4 * BEAT) });
+      }
+      ev.push({ at: b0, fn: (t) => keys(c.bass, t, 1.6 * BEAT, 0.07) });
+      ev.push({ at: b0 + 2, fn: (t) => keys(c.bass + 7, t, 1.2 * BEAT, 0.045) });
+      c.arp.forEach((n, i) => ev.push({ at: b0 + i + 0.5, fn: (t) => keys(n, t, 0.5 * BEAT, 0.022) }));
+      // Na segunda volta, a primeira metade fica só com o acompanhamento, para respirar.
+      if (round % 2 === 1 && bar < 8) return;
+      let at = b0;
+      for (const [n, d] of MELODY[bar]) {
+        if (n !== null) { const when = at; ev.push({ at: when, fn: (t) => keys(n, t, d * BEAT, 0.085) }); }
+        at += d;
+      }
+    });
+    return ev.sort((a, b) => a.at - b.at);
   }
 
+  let playing = false, timer = null, loopStart = 0, round = 0, events = [], idx = 0;
+
   function tick() {
-    // Depois de uma pausa (app em segundo plano), retoma sem tocar notas atrasadas de rajada.
-    if (nextTime < ctx.currentTime - 0.1) nextTime = ctx.currentTime + 0.05;
-    while (nextTime < ctx.currentTime + 0.25) {
-      scheduleStep(nextTime);
-      nextTime += EIGHTH;
+    const now = ctx.currentTime;
+    // Depois de uma pausa (app em segundo plano), recomeça em vez de tocar notas atrasadas de rajada.
+    if (idx < events.length && loopStart + events[idx].at * BEAT < now - 0.2) {
+      loopStart = now + 0.1; round = 0; events = buildLoop(round); idx = 0;
+    }
+    for (;;) {
+      if (idx >= events.length) {
+        loopStart += LOOP_BEATS * BEAT; round++; events = buildLoop(round); idx = 0;
+      }
+      const t = loopStart + events[idx].at * BEAT;
+      if (t > now + 0.3) break;
+      events[idx].fn(t);
+      idx++;
     }
   }
 
   function startMusic() {
     if (!ctx || playing) return;
     playing = true;
-    step = 0;
-    nextTime = ctx.currentTime + 0.1;
+    round = 0; events = buildLoop(0); idx = 0;
+    loopStart = ctx.currentTime + 0.1;
     musicBus.gain.cancelScheduledValues(ctx.currentTime);
-    musicBus.gain.setTargetAtTime(0.55, ctx.currentTime, 0.6);
+    musicBus.gain.setTargetAtTime(0.7, ctx.currentTime, 0.8);
     tick();
-    timer = setInterval(tick, 60);
+    timer = setInterval(tick, 80);
   }
 
   function stopMusic() {
