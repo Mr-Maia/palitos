@@ -1,0 +1,600 @@
+<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Aponta">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#F7FAFA" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#152A32" media="(prefers-color-scheme: dark)">
+<title>Aponta no Mapa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&display=swap">
+<style>
+:root {
+  color-scheme: light;
+  --bg: #E4ECEE;
+  --surface: #F7FAFA;
+  --land: #FFFFFF;
+  --land-off: #CFDBDE;
+  --edge: #7C949B;
+  --edge-soft: #A9BCC1;
+  --ink: #12303A;
+  --muted: #557079;
+  --accent: #1B6A86;
+  --accent-ink: #FFFFFF;
+  --ok: #2F9E5C;
+  --warn: #E6B325;
+  --bad: #D34B40;
+  --shadow: 0 1px 2px rgba(18,48,58,.08), 0 6px 20px rgba(18,48,58,.08);
+  --display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0D1B20; --surface: #152A32; --land: #28434D; --land-off: #172D35;
+    --edge: #587983; --edge-soft: #2D4852;
+    --ink: #E3EEF1; --muted: #8FA9B1; --accent: #5FB3D1; --accent-ink: #0D1B20;
+    --ok: #3DBA6F; --warn: #F0C23B; --bad: #E4625A;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 6px 20px rgba(0,0,0,.25);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0D1B20; --surface: #152A32; --land: #28434D; --land-off: #172D35;
+  --edge: #587983; --edge-soft: #2D4852;
+  --ink: #E3EEF1; --muted: #8FA9B1; --accent: #5FB3D1; --accent-ink: #0D1B20;
+  --ok: #3DBA6F; --warn: #F0C23B; --bad: #E4625A;
+  --shadow: 0 1px 2px rgba(0,0,0,.3), 0 6px 20px rgba(0,0,0,.25);
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+@supports (height: 100dvh) { html, body { height: 100dvh; } }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font: 16px/1.4 var(--body);
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+  overflow: hidden;
+  -webkit-user-select: none; user-select: none;
+  -webkit-touch-callout: none;
+}
+button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulation; }
+button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+[hidden] { display: none !important; }
+
+.screen { height: 100%; display: flex; flex-direction: column; }
+
+/* ---------- Menu ---------- */
+#menu { overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding-inline: 16px; padding-block: calc(env(safe-area-inset-top, 0px) + 28px) calc(env(safe-area-inset-bottom, 0px) + 28px); }
+.menu-inner { width: 100%; max-width: 520px; margin: 0 auto; display: flex; flex-direction: column; gap: 22px; }
+.brand h1 {
+  font: 800 clamp(34px, 10vw, 46px)/0.95 var(--display);
+  letter-spacing: -0.02em; margin: 0; text-wrap: balance;
+}
+.brand p { margin: 8px 0 0; color: var(--muted); }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; color: var(--muted); margin-top: 12px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+
+.card {
+  display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px;
+  width: 100%; text-align: left; border: 1px solid var(--edge-soft);
+  background: var(--surface); border-radius: 16px; padding: 14px 16px;
+  box-shadow: var(--shadow); transition: transform .12s ease;
+}
+.card:active { transform: scale(.98); }
+.card .t { font: 700 20px/1.1 var(--display); margin: 0; }
+.card .s { font-size: 13px; color: var(--muted); margin-top: 4px; font-variant-numeric: tabular-nums; }
+.card svg { display: block; }
+.card path { fill: var(--accent); stroke: none; }
+.card .ctx { fill: var(--land-off); }
+
+.card.pt { grid-template-columns: 1fr 96px; padding: 18px 18px; border-color: var(--accent); }
+.card.pt .t { font-size: 30px; }
+.card.pt .eyebrow { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); font-weight: 700; margin-bottom: 4px; }
+
+.section-label { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 700; margin: 6px 2px -10px; }
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.card > div { min-width: 0; }
+.grid .card { grid-template-columns: 1fr; grid-template-rows: 64px auto; padding: 12px; }
+.grid .card svg { width: 100%; height: 64px; }
+
+/* ---------- Game ---------- */
+#game { position: relative; }
+.topbar {
+  display: flex; align-items: center; gap: 10px;
+  padding-inline: 12px; padding-block: calc(env(safe-area-inset-top, 0px) + 8px) 8px;
+  background: var(--surface); border-bottom: 1px solid var(--edge-soft); z-index: 2;
+}
+.icon-btn {
+  width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--edge-soft);
+  background: var(--bg); display: grid; place-items: center; flex: none;
+}
+.icon-btn svg { width: 20px; height: 20px; stroke: var(--ink); fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.topbar .title { flex: 1; min-width: 0; }
+.topbar .title b { font: 700 17px/1.1 var(--display); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.progress { height: 5px; background: var(--land-off); border-radius: 3px; margin-top: 6px; overflow: hidden; display: flex; }
+.progress i { display: block; height: 100%; transition: width .3s ease; }
+.tally { display: flex; gap: 8px; font-variant-numeric: tabular-nums; font-size: 13px; font-weight: 700; }
+.tally em { font-style: normal; }
+.tally span { display: inline-flex; align-items: center; gap: 4px; }
+.tally i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+
+.map-wrap { flex: 1; position: relative; overflow: hidden; touch-action: none; }
+#map { width: 100%; height: 100%; display: block; }
+#map .ctx { fill: var(--land-off); stroke: var(--edge-soft); stroke-width: .6; vector-effect: non-scaling-stroke; pointer-events: none; }
+#map .rg { fill: var(--land); stroke: var(--edge); stroke-width: .8; vector-effect: non-scaling-stroke; transition: fill .25s ease; }
+#map .dot { fill: var(--land); stroke: var(--edge); stroke-width: 1.2; vector-effect: non-scaling-stroke; }
+#map .hit { fill: transparent; stroke: none; }
+#map .done-ok { fill: var(--ok); }
+#map .done-warn { fill: var(--warn); }
+#map .done-bad { fill: var(--bad); }
+#map .wrong { fill: var(--bad); fill-opacity: .45; transition: none; }
+#map .hint { animation: hint 1s ease-in-out infinite; }
+@keyframes hint { 50% { fill: var(--accent); } }
+
+.float-btns { position: absolute; right: max(12px, env(safe-area-inset-right, 0px)); top: 12px; display: flex; flex-direction: column; gap: 8px; }
+.float-btns .icon-btn { background: var(--surface); box-shadow: var(--shadow); }
+
+.toast {
+  position: absolute; left: 50%; top: 14px; transform: translateX(-50%);
+  background: var(--ink); color: var(--bg); padding: 7px 14px; border-radius: 999px;
+  font-size: 14px; font-weight: 700; white-space: nowrap; pointer-events: none;
+  opacity: 0; transition: opacity .2s ease; max-width: calc(100% - 120px); overflow: hidden; text-overflow: ellipsis;
+}
+.toast.show { opacity: .92; }
+
+.ask {
+  background: var(--surface); border-top: 1px solid var(--edge-soft);
+  padding-inline: 16px; padding-block: 12px calc(env(safe-area-inset-bottom, 0px) + 14px);
+  text-align: center; z-index: 2;
+}
+.ask .lbl { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+.ask .target { font: 800 clamp(26px, 8vw, 34px)/1.1 var(--display); margin: 4px 0 8px; text-wrap: balance; letter-spacing: -0.01em; }
+.ask .target.pop { animation: pop .3s ease; }
+@keyframes pop { from { transform: scale(.9); opacity: .3; } }
+.tries { display: flex; justify-content: center; gap: 6px; height: 10px; }
+.tries i { width: 22px; height: 6px; border-radius: 3px; background: var(--land-off); }
+.tries i.on { background: var(--bad); }
+.tries-note { font-size: 12px; color: var(--muted); margin-top: 6px; min-height: 16px; }
+
+/* ---------- End ---------- */
+.end {
+  position: absolute; inset: 0; background: color-mix(in srgb, var(--bg) 70%, transparent);
+  backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+  display: grid; place-items: end center; z-index: 5; padding: 16px;
+}
+.end .sheet {
+  width: 100%; max-width: 460px; background: var(--surface); border-radius: 20px;
+  padding: 22px 20px calc(env(safe-area-inset-bottom, 0px) + 20px); box-shadow: var(--shadow);
+  border: 1px solid var(--edge-soft);
+}
+.end h2 { font: 800 30px/1 var(--display); margin: 0 0 4px; }
+.end .sub { color: var(--muted); margin: 0 0 16px; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px; }
+.stat { border-radius: 12px; padding: 10px; background: var(--bg); }
+.stat b { font: 800 28px/1 var(--display); display: block; font-variant-numeric: tabular-nums; }
+.stat span { font-size: 12px; color: var(--muted); }
+.stat.ok b { color: var(--ok); } .stat.warn b { color: var(--warn); } .stat.bad b { color: var(--bad); }
+.missed { font-size: 14px; color: var(--muted); margin: 0 0 16px; }
+.missed strong { color: var(--ink); }
+.actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.btn { border-radius: 12px; padding: 13px; font-weight: 700; border: 1px solid var(--edge-soft); background: var(--bg); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+
+.loading { display: grid; place-items: center; height: 100%; color: var(--muted); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+
+<div id="loading" class="loading">A carregar mapas…</div>
+
+<section id="menu" class="screen" hidden>
+  <div class="menu-inner">
+    <header class="brand">
+      <h1>Aponta no<br>Mapa</h1>
+      <p>Aparece um nome em baixo. Toca no sítio certo do mapa.</p>
+      <div class="legend">
+        <span><i style="background:var(--ok)"></i>À primeira</span>
+        <span><i style="background:var(--warn)"></i>2–3 tentativas</span>
+        <span><i style="background:var(--bad)"></i>Mais de 3</span>
+      </div>
+    </header>
+
+    <button class="card pt" id="btn-portugal" data-mode="portugal">
+      <div>
+        <div class="eyebrow">18 distritos</div>
+        <div class="t">Portugal</div>
+        <div class="s" data-best="portugal"></div>
+      </div>
+      <svg data-thumb="portugal" width="96" height="120" aria-hidden="true"></svg>
+    </button>
+
+    <div class="section-label">Continentes</div>
+    <div class="grid" id="continents"></div>
+  </div>
+</section>
+
+<section id="game" class="screen" hidden>
+  <div class="topbar">
+    <button class="icon-btn" id="back" aria-label="Voltar ao menu">
+      <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>
+    </button>
+    <div class="title">
+      <b id="g-title">Portugal</b>
+      <div class="progress" id="g-progress"></div>
+    </div>
+    <div class="tally">
+      <span><i style="background:var(--ok)"></i><em id="c-ok">0</em></span>
+      <span><i style="background:var(--warn)"></i><em id="c-warn">0</em></span>
+      <span><i style="background:var(--bad)"></i><em id="c-bad">0</em></span>
+    </div>
+  </div>
+
+  <div class="map-wrap" id="map-wrap">
+    <svg id="map" role="application" aria-label="Mapa"></svg>
+    <div class="float-btns">
+      <button class="icon-btn" id="zoom-in" aria-label="Aproximar"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+      <button class="icon-btn" id="zoom-out" aria-label="Afastar"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button>
+      <button class="icon-btn" id="zoom-reset" aria-label="Ver mapa inteiro"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+    </div>
+    <div class="toast" id="toast"></div>
+  </div>
+
+  <div class="ask" aria-live="polite">
+    <div class="lbl" id="ask-lbl">Toca em</div>
+    <div class="target" id="target">—</div>
+    <div class="tries" id="tries"></div>
+    <div class="tries-note" id="tries-note"></div>
+  </div>
+
+  <div class="end" id="end" hidden>
+    <div class="sheet">
+      <h2 id="end-title">Muito bem!</h2>
+      <p class="sub" id="end-sub"></p>
+      <div class="stats">
+        <div class="stat ok"><b id="e-ok">0</b><span>à primeira</span></div>
+        <div class="stat warn"><b id="e-warn">0</b><span>2–3 tentativas</span></div>
+        <div class="stat bad"><b id="e-bad">0</b><span>mais de 3</span></div>
+      </div>
+      <p class="missed" id="e-missed" hidden></p>
+      <div class="actions">
+        <button class="btn" id="e-menu">Menu</button>
+        <button class="btn primary" id="e-again">Jogar outra vez</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script src="vendor/d3.min.js"></script>
+<script src="vendor/topojson-client.min.js"></script>
+<script>
+(() => {
+  // Cada modo: nome, projeção (rotação do globo) e caixa lon/lat a enquadrar.
+  const MODES = {
+    portugal: { name: 'Portugal', unit: 'distritos' },
+    europa:  { name: 'Europa',            rotate: [-15, -52],  box: [[-25, 34], [45, 71]] },
+    africa:  { name: 'África',            rotate: [-17, -2],   box: [[-20, -36], [52, 38]] },
+    asia:    { name: 'Ásia',              rotate: [-88, -28],  box: [[26, -11], [148, 55]] },
+    anorte:  { name: 'América do Norte',  rotate: [98, -35],   box: [[-168, 7], [-55, 72]] },
+    asul:    { name: 'América do Sul',    rotate: [60, 20],    box: [[-82, -56], [-34, 13]] },
+    oceania: { name: 'Oceânia',           rotate: [-165, 15],  box: [[112, -48], [-172, 12]] },
+  };
+  const CONTINENTS = ['europa', 'africa', 'asia', 'anorte', 'asul', 'oceania'];
+  const HINT_AFTER = 5; // erros até o mapa piscar o sítio certo
+
+  let world = [], portugal = [];
+
+  // ---------- helpers ----------
+  const $ = (id) => document.getElementById(id);
+  const store = {
+    get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+  };
+  const shuffle = (a) => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+  // d3 espera anéis exteriores no sentido horário; corrige se a feature "cobrir o globo".
+  function rewind(f) {
+    if (d3.geoArea(f) > 2 * Math.PI) {
+      const g = f.geometry;
+      const rev = (poly) => poly.map((r) => r.slice().reverse());
+      if (g.type === 'Polygon') g.coordinates = rev(g.coordinates);
+      else if (g.type === 'MultiPolygon') g.coordinates = g.coordinates.map(rev);
+    }
+    return f;
+  }
+
+  function boxPoints([[x0, y0], [x1, y1]]) {
+    if (x1 < x0) x1 += 360;
+    const pts = [];
+    for (let i = 0; i <= 8; i++) {
+      const x = x0 + (x1 - x0) * i / 8;
+      pts.push([x, y0], [x, y1]);
+    }
+    for (let i = 0; i <= 4; i++) {
+      const y = y0 + (y1 - y0) * i / 4;
+      pts.push([x0, y], [x1, y]);
+    }
+    return { type: 'MultiPoint', coordinates: pts.map(([x, y]) => [x > 180 ? x - 360 : x, y]) };
+  }
+
+  function projectionFor(mode, w, h, pad) {
+    const m = MODES[mode];
+    if (mode === 'portugal') {
+      return d3.geoMercator().fitExtent([[pad, pad], [w - pad, h - pad]], { type: 'FeatureCollection', features: portugal });
+    }
+    return d3.geoAzimuthalEqualArea().rotate(m.rotate).clipAngle(100)
+      .fitExtent([[pad, pad], [w - pad, h - pad]], boxPoints(m.box));
+  }
+
+  function regionsFor(mode) {
+    return mode === 'portugal' ? portugal : world.filter((f) => f.properties.c === mode);
+  }
+
+  // ---------- menu ----------
+  function drawThumb(svg, mode) {
+    const w = svg.clientWidth || +svg.getAttribute('width'), h = svg.clientHeight || +svg.getAttribute('height');
+    const proj = projectionFor(mode, w, h, 2);
+    const path = d3.geoPath(proj);
+    const sel = d3.select(svg).attr('viewBox', `0 0 ${w} ${h}`);
+    sel.selectAll('*').remove();
+    if (mode !== 'portugal') {
+      sel.append('g').selectAll('path').data(world.filter((f) => f.properties.c !== mode))
+        .join('path').attr('class', 'ctx').attr('d', path);
+    }
+    sel.append('g').selectAll('path').data(regionsFor(mode)).join('path').attr('d', path);
+  }
+
+  function bestText(mode) {
+    const b = store.get('best:' + mode);
+    return b ? `Recorde: ${b.ok}/${b.total} à primeira` : '';
+  }
+
+  function buildMenu() {
+    const grid = $('continents');
+    grid.innerHTML = '';
+    for (const mode of CONTINENTS) {
+      const n = regionsFor(mode).length;
+      const b = document.createElement('button');
+      b.className = 'card';
+      b.dataset.mode = mode;
+      b.innerHTML = `<svg data-thumb="${mode}" aria-hidden="true"></svg>
+        <div><div class="t">${MODES[mode].name}</div><div class="s">${n} países</div><div class="s" data-best="${mode}"></div></div>`;
+      grid.appendChild(b);
+    }
+    document.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', () => startGame(b.dataset.mode)));
+  }
+
+  function showMenu() {
+    $('game').hidden = true;
+    $('menu').hidden = false;
+    document.querySelectorAll('[data-thumb]').forEach((svg) => drawThumb(svg, svg.dataset.thumb));
+    document.querySelectorAll('[data-best]').forEach((el) => { el.textContent = bestText(el.dataset.best); });
+  }
+
+  // ---------- jogo ----------
+  let G = null;
+  const svg = d3.select('#map');
+  const zoom = d3.zoom().on('zoom', (e) => {
+    G && G.layer.attr('transform', e.transform);
+    G && G.layer.selectAll('.dot').attr('r', 6 / e.transform.k);
+    G && G.layer.selectAll('.hit').attr('r', 14 / e.transform.k);
+  });
+  svg.call(zoom).on('dblclick.zoom', null);
+
+  function startGame(mode) {
+    // Entrada no histórico: o botão "voltar" do telemóvel regressa ao menu.
+    if (!history.state || !history.state.game) history.pushState({ game: mode }, '', '#' + mode);
+    $('menu').hidden = true;
+    $('game').hidden = false;
+    $('end').hidden = true;
+    const regions = regionsFor(mode);
+    G = {
+      mode,
+      regions,
+      queue: shuffle(regions.map((f) => f.properties.n)),
+      idx: 0,
+      misses: 0,
+      result: new Map(), // nome -> 'ok' | 'warn' | 'bad'
+      started: Date.now(),
+      layer: null,
+    };
+    $('g-title').textContent = MODES[mode].name;
+    renderMap();
+    showTarget();
+    updateTally();
+  }
+
+  function renderMap() {
+    const wrap = $('map-wrap');
+    const w = wrap.clientWidth, h = wrap.clientHeight;
+    const proj = projectionFor(G.mode, w, h, G.mode === 'portugal' ? 20 : 8);
+    const path = d3.geoPath(proj);
+    svg.attr('viewBox', `0 0 ${w} ${h}`).selectAll('*').remove();
+    const layer = svg.append('g');
+    G.layer = layer;
+
+    if (G.mode !== 'portugal') {
+      layer.append('g').selectAll('path').data(world.filter((f) => f.properties.c !== G.mode))
+        .join('path').attr('class', 'ctx').attr('d', path);
+    }
+
+    const byName = new Map();
+    const shapes = layer.append('g').selectAll('path').data(G.regions).join('path')
+      .attr('class', 'rg').attr('d', path)
+      .on('click', (e, f) => onPick(f.properties.n));
+    shapes.each(function (f) { byName.set(f.properties.n, [this]); });
+
+    // Países demasiado pequenos para tocar ganham um ponto (e uma área de toque maior).
+    const tiny = G.regions.filter((f) => path.area(f) < 40);
+    const dots = layer.append('g');
+    for (const f of tiny) {
+      const c = path.centroid(f);
+      if (!isFinite(c[0])) continue;
+      const dot = dots.append('circle').attr('class', 'rg dot').attr('cx', c[0]).attr('cy', c[1]).attr('r', 6).datum(f);
+      dots.append('circle').attr('class', 'hit').attr('cx', c[0]).attr('cy', c[1]).attr('r', 14)
+        .on('click', () => onPick(f.properties.n));
+      dot.on('click', () => onPick(f.properties.n));
+      byName.get(f.properties.n).push(dot.node());
+    }
+    G.els = byName;
+
+    // Reaplica cores de um jogo em curso (ex.: rodar o ecrã).
+    for (const [n, cls] of G.result) G.els.get(n).forEach((el) => el.classList.add('done-' + cls));
+
+    zoom.scaleExtent([1, G.mode === 'portugal' ? 6 : 14]).translateExtent([[-w * 0.25, -h * 0.25], [w * 1.25, h * 1.25]]);
+    svg.call(zoom.transform, d3.zoomIdentity);
+  }
+
+  function current() { return G.queue[G.idx]; }
+
+  function showTarget() {
+    const t = $('target');
+    t.textContent = current();
+    t.classList.remove('pop'); void t.offsetWidth; t.classList.add('pop');
+    renderTries();
+  }
+
+  function renderTries() {
+    const box = $('tries');
+    box.innerHTML = '';
+    for (let i = 0; i < 3; i++) {
+      const b = document.createElement('i');
+      if (i < G.misses) b.className = 'on';
+      box.appendChild(b);
+    }
+    const note = G.misses === 0 ? '' : G.misses <= 2 ? `${G.misses} erro${G.misses > 1 ? 's' : ''} — ainda fica amarelo`
+      : G.misses < HINT_AFTER ? 'Já vai ficar vermelho' : 'Olha para o que está a piscar';
+    $('tries-note').textContent = note;
+  }
+
+  let toastTimer;
+  function toast(msg) {
+    const t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 1300);
+  }
+
+  function onPick(name) {
+    if (!G || G.idx >= G.queue.length) return;
+    if (G.result.has(name)) { toast(name); return; }
+    const target = current();
+    const els = G.els.get(name);
+
+    if (name !== target) {
+      G.misses++;
+      toast(`Isso é ${name}`);
+      els.forEach((el) => { el.classList.add('wrong'); setTimeout(() => el.classList.remove('wrong'), 450); });
+      if (navigator.vibrate) navigator.vibrate(40);
+      if (G.misses >= HINT_AFTER) G.els.get(target).forEach((el) => el.classList.add('hint'));
+      renderTries();
+      return;
+    }
+
+    const attempts = G.misses + 1;
+    const cls = attempts === 1 ? 'ok' : attempts <= 3 ? 'warn' : 'bad';
+    G.result.set(name, cls);
+    els.forEach((el) => { el.classList.remove('hint', 'wrong'); el.classList.add('done-' + cls); });
+    G.idx++;
+    G.misses = 0;
+    updateTally();
+    if (G.idx >= G.queue.length) finish();
+    else showTarget();
+  }
+
+  function counts() {
+    const c = { ok: 0, warn: 0, bad: 0 };
+    for (const v of G.result.values()) c[v]++;
+    return c;
+  }
+
+  function updateTally() {
+    const c = counts(), total = G.queue.length;
+    $('c-ok').textContent = c.ok; $('c-warn').textContent = c.warn; $('c-bad').textContent = c.bad;
+    $('g-progress').innerHTML = ['ok', 'warn', 'bad'].map((k) => `<i style="width:${c[k] / total * 100}%;background:var(--${k})"></i>`).join('');
+  }
+
+  function finish() {
+    const c = counts(), total = G.queue.length;
+    const secs = Math.round((Date.now() - G.started) / 1000);
+    const time = secs >= 60 ? `${Math.floor(secs / 60)} min ${secs % 60} s` : `${secs} s`;
+    const pct = c.ok / total;
+    $('end-title').textContent = pct === 1 ? 'Perfeito!' : pct >= 0.75 ? 'Muito bem!' : pct >= 0.4 ? 'Bom trabalho' : 'Continua a treinar';
+    $('end-sub').textContent = `${MODES[G.mode].name} · ${total} ${G.mode === 'portugal' ? 'distritos' : 'países'} em ${time}`;
+    $('e-ok').textContent = c.ok; $('e-warn').textContent = c.warn; $('e-bad').textContent = c.bad;
+    const bad = [...G.result].filter(([, v]) => v === 'bad').map(([n]) => n);
+    const m = $('e-missed');
+    m.hidden = bad.length === 0;
+    if (bad.length) m.innerHTML = `A rever: <strong>${bad.join(', ')}</strong>`;
+    const prev = store.get('best:' + G.mode);
+    if (!prev || c.ok > prev.ok) store.set('best:' + G.mode, { ok: c.ok, total });
+    $('ask-lbl').textContent = 'Terminado';
+    $('target').textContent = `${c.ok}/${total} à primeira`;
+    $('tries').innerHTML = ''; $('tries-note').textContent = '';
+    $('end').hidden = false;
+  }
+
+  // ---------- controlos ----------
+  const goMenu = () => { if (history.state && history.state.game) history.back(); else showMenu(); };
+  $('back').addEventListener('click', goMenu);
+  $('e-menu').addEventListener('click', goMenu);
+  window.addEventListener('popstate', () => {
+    const h = location.hash.slice(1);
+    if (history.state && history.state.game && MODES[h]) startGame(h);
+    else { history.replaceState(null, '', location.pathname); showMenu(); }
+  });
+  $('e-again').addEventListener('click', () => { $('ask-lbl').textContent = 'Toca em'; startGame(G.mode); });
+  $('zoom-in').addEventListener('click', () => svg.transition().duration(250).call(zoom.scaleBy, 1.8));
+  $('zoom-out').addEventListener('click', () => svg.transition().duration(250).call(zoom.scaleBy, 1 / 1.8));
+  $('zoom-reset').addEventListener('click', () => svg.transition().duration(300).call(zoom.transform, d3.zoomIdentity));
+
+  let resizeTimer;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      if (!$('game').hidden && G) renderMap();
+      else if (!$('menu').hidden) document.querySelectorAll('[data-thumb]').forEach((s) => drawThumb(s, s.dataset.thumb));
+    }, 150);
+  });
+
+  // ---------- arranque ----------
+  Promise.all([fetch('data/mundo.json').then((r) => r.json()), fetch('data/portugal.json').then((r) => r.json())])
+    .then(([topo, pt]) => {
+      world = topojson.feature(topo, topo.objects.countries).features;
+      portugal = pt.features.map((f) => rewind({ type: 'Feature', properties: { n: f.properties.name }, geometry: f.geometry }));
+      $('loading').hidden = true;
+      buildMenu();
+      const h = location.hash.slice(1);
+      if (MODES[h]) {
+        history.replaceState(null, '', location.pathname);
+        showMenu();
+        startGame(h);
+      } else showMenu();
+    })
+    .catch(() => { $('loading').textContent = 'Não foi possível carregar os mapas. Verifica a ligação e recarrega a página.'; });
+
+  if ('serviceWorker' in navigator && location.protocol === 'https:') {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+})();
+</script>
+</body>
+</html>
