@@ -456,6 +456,8 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
   };
   const CONTINENTS = ['europa', 'africa', 'asia', 'anorte', 'asul', 'oceania'];
   const HINT_AFTER = 5; // erros até o mapa piscar o sítio certo
+  const TINY_KM2 = 4000; // países abaixo desta área têm bola
+  const EARTH_R2 = 6371 * 6371; // km², para converter a área esférica do d3
 
   let world = [], portugal = [];
 
@@ -603,8 +605,9 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
       .on('click', (e, f) => onPick(f.properties.n));
     shapes.each(function (f) { byName.set(f.properties.n, [this]); });
 
-    // Países demasiado pequenos para tocar ganham um ponto (e uma área de toque maior).
-    const tiny = G.regions.filter((f) => path.area(f) < 40);
+    // Micro-estados e ilhas minúsculas (< 4000 km², ex.: Vaticano, Andorra, Maldivas) ganham uma bola
+    // com área de toque maior. Os restantes veem-se no mapa e podem ser aproximados.
+    const tiny = G.mode === 'portugal' ? [] : G.regions.filter((f) => d3.geoArea(f) * EARTH_R2 < TINY_KM2);
     const dots = layer.append('g');
     for (const f of tiny) {
       const c = dotPosition(f, path, proj);
