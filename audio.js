@@ -74,15 +74,15 @@
   function keys(note, t, dur, vol) {
     const f = ctx.createBiquadFilter(), g = ctx.createGain();
     f.type = 'lowpass'; f.Q.value = 0.3;
-    f.frequency.setValueAtTime(1800, t);
-    f.frequency.exponentialRampToValueAtTime(500, t + dur + 0.8);
+    f.frequency.setValueAtTime(1100, t);
+    f.frequency.exponentialRampToValueAtTime(380, t + dur + 0.8);
     const len = dur + 1.2;
     g.gain.setValueAtTime(0.0001, t);
     g.gain.exponentialRampToValueAtTime(vol, t + 0.012);
     g.gain.exponentialRampToValueAtTime(vol * 0.45, t + 0.35);
     g.gain.exponentialRampToValueAtTime(0.0001, t + len);
     f.connect(g); g.connect(musicBus); g.connect(reverbIn);
-    [[1, 1], [2, 0.12], [3, 0.03]].forEach(([mult, amp]) => {
+    [[1, 1], [2, 0.07]].forEach(([mult, amp]) => {
       const o = ctx.createOscillator(), og = ctx.createGain();
       o.type = 'sine'; o.frequency.value = midi(note) * mult; og.gain.value = amp;
       o.connect(og).connect(f); o.start(t); o.stop(t + len + 0.05);
@@ -92,7 +92,7 @@
   // Fundo de acordes, muito suave e abafado.
   function pad(notes, t, dur) {
     const f = ctx.createBiquadFilter(), g = ctx.createGain();
-    f.type = 'lowpass'; f.frequency.value = 520; f.Q.value = 0.2;
+    f.type = 'lowpass'; f.frequency.value = 440; f.Q.value = 0.2;
     g.gain.setValueAtTime(0.0001, t);
     g.gain.linearRampToValueAtTime(0.022, t + 1.2);
     g.gain.setValueAtTime(0.022, t + dur - 0.4);
@@ -153,6 +153,7 @@
     [[72, 3], [null, 1]],
   ];
   const LOOP_BEATS = PROG.length * 4;
+  const MEL_SHIFT = -12; // melodia e arpejo uma oitava abaixo do escrito, para um som mais grave e quente
 
   // Lista de eventos de uma volta completa, ordenada no tempo.
   function buildLoop(round) {
@@ -163,14 +164,14 @@
         let len = 1; while (PROG[bar + len] === name) len++;
         ev.push({ at: b0, fn: (t) => pad(c.pad, t, len * 4 * BEAT) });
       }
-      ev.push({ at: b0, fn: (t) => keys(c.bass, t, 1.6 * BEAT, 0.07) });
-      ev.push({ at: b0 + 2, fn: (t) => keys(c.bass + 7, t, 1.2 * BEAT, 0.045) });
-      c.arp.forEach((n, i) => ev.push({ at: b0 + i + 0.5, fn: (t) => keys(n, t, 0.5 * BEAT, 0.022) }));
+      ev.push({ at: b0, fn: (t) => keys(c.bass, t, 1.6 * BEAT, 0.09) });
+      ev.push({ at: b0 + 2, fn: (t) => keys(c.bass + 7, t, 1.2 * BEAT, 0.055) });
+      c.arp.forEach((n, i) => ev.push({ at: b0 + i + 0.5, fn: (t) => keys(n + MEL_SHIFT, t, 0.5 * BEAT, 0.02) }));
       // Na segunda volta, a primeira metade fica só com o acompanhamento, para respirar.
       if (round % 2 === 1 && bar < 8) return;
       let at = b0;
       for (const [n, d] of MELODY[bar]) {
-        if (n !== null) { const when = at; ev.push({ at: when, fn: (t) => keys(n, t, d * BEAT, 0.085) }); }
+        if (n !== null) { const when = at; ev.push({ at: when, fn: (t) => keys(n + MEL_SHIFT, t, d * BEAT, 0.1) }); }
         at += d;
       }
     });
