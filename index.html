@@ -79,6 +79,8 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 /* ---------- Menu ---------- */
 #menu { overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding-inline: 16px; padding-block: calc(env(safe-area-inset-top, 0px) + 28px) calc(env(safe-area-inset-bottom, 0px) + 28px); }
 .menu-inner { width: 100%; max-width: 520px; margin: 0 auto; display: flex; flex-direction: column; gap: 22px; }
+.menu-left, .menu-right { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
+.brand h1 .br { display: block; }
 .brand h1 {
   font: 800 clamp(34px, 10vw, 46px)/0.95 var(--display);
   letter-spacing: -0.02em; margin: 0; text-wrap: balance;
@@ -87,6 +89,18 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; color: var(--muted); margin-top: 12px; }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
 .legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.sound-row { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+.pill {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px 0 10px;
+  border-radius: 999px; border: 1px solid var(--edge-soft); background: var(--surface); font-weight: 700; font-size: 14px;
+}
+.pill svg, .icon-btn svg { width: 20px; height: 20px; stroke: var(--ink); fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.pill[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.pill[aria-pressed="true"] svg { stroke: var(--accent-ink); }
+[aria-pressed] .slash { display: none; }
+[aria-pressed="false"] .slash { display: inline; }
+[aria-pressed="false"] .wave { display: none; }
+[aria-pressed="false"] svg { opacity: .7; }
 
 .card {
   display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px;
@@ -101,6 +115,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .card path { fill: var(--accent); stroke: none; }
 .card .ctx { fill: var(--land-off); }
 
+.card.pt svg { width: 96px; height: 120px; }
 .card.pt { grid-template-columns: 1fr 96px; padding: 18px 18px; border-color: var(--accent); }
 .card.pt .t { font-size: 30px; }
 .card.pt .eyebrow { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); font-weight: 700; margin-bottom: 4px; }
@@ -112,17 +127,25 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .grid .card svg { width: 100%; height: 64px; }
 
 /* ---------- Game ---------- */
-#game { position: relative; }
+#game {
+  position: relative; display: grid;
+  grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-areas: "top" "map" "ask";
+}
+.topbar { grid-area: top; }
+.map-wrap { grid-area: map; }
+.ask { grid-area: ask; }
 .topbar {
   display: flex; align-items: center; gap: 10px;
-  padding-inline: 12px; padding-block: calc(env(safe-area-inset-top, 0px) + 8px) 8px;
+  padding-inline: max(12px, env(safe-area-inset-left, 0px)) max(12px, env(safe-area-inset-right, 0px));
+  padding-block: calc(env(safe-area-inset-top, 0px) + 8px) 8px;
   background: var(--surface); border-bottom: 1px solid var(--edge-soft); z-index: 2;
 }
+.icon-btn:active, .btn:active, .pill:active { transform: scale(.94); }
 .icon-btn {
   width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--edge-soft);
   background: var(--bg); display: grid; place-items: center; flex: none;
 }
-.icon-btn svg { width: 20px; height: 20px; stroke: var(--ink); fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
 .topbar .title { flex: 1; min-width: 0; }
 .topbar .title b { font: 700 17px/1.1 var(--display); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .progress { height: 5px; background: var(--land-off); border-radius: 3px; margin-top: 6px; overflow: hidden; display: flex; }
@@ -132,7 +155,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .tally span { display: inline-flex; align-items: center; gap: 4px; }
 .tally i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
 
-.map-wrap { flex: 1; position: relative; overflow: hidden; touch-action: none; }
+.map-wrap { position: relative; overflow: hidden; touch-action: none; }
 #map { width: 100%; height: 100%; display: block; }
 #map .ctx { fill: var(--land-off); stroke: var(--edge-soft); stroke-width: .6; vector-effect: non-scaling-stroke; pointer-events: none; }
 #map .rg { fill: var(--land); stroke: var(--edge); stroke-width: .8; vector-effect: non-scaling-stroke; transition: fill .25s ease; }
@@ -147,6 +170,8 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 
 .float-btns { position: absolute; right: max(12px, env(safe-area-inset-right, 0px)); top: 12px; display: flex; flex-direction: column; gap: 8px; }
 .float-btns .icon-btn { background: var(--surface); box-shadow: var(--shadow); }
+.float-btns .sep { height: 4px; }
+.float-btns [aria-pressed="false"] { background: var(--bg); box-shadow: none; }
 
 .toast {
   position: absolute; left: 50%; top: 14px; transform: translateX(-50%);
@@ -158,7 +183,8 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 
 .ask {
   background: var(--surface); border-top: 1px solid var(--edge-soft);
-  padding-inline: 16px; padding-block: 12px calc(env(safe-area-inset-bottom, 0px) + 14px);
+  padding-inline: max(16px, env(safe-area-inset-left, 0px)) max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 12px calc(env(safe-area-inset-bottom, 0px) + 14px);
   text-align: center; z-index: 2;
 }
 .ask .lbl { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
@@ -174,7 +200,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .end {
   position: absolute; inset: 0; background: color-mix(in srgb, var(--bg) 70%, transparent);
   backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
-  display: grid; place-items: end center; z-index: 5; padding: 16px;
+  display: grid; place-items: end center; z-index: 5; padding: 16px; overflow-y: auto;
 }
 .end .sheet {
   width: 100%; max-width: 460px; background: var(--surface); border-radius: 20px;
@@ -194,6 +220,99 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .btn { border-radius: 12px; padding: 13px; font-weight: 700; border: 1px solid var(--edge-soft); background: var(--bg); }
 .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 
+/* ---------- Responsive ---------- */
+/* Telemóveis pequenos */
+@media (max-width: 360px) {
+  .topbar { gap: 8px; }
+  .topbar .title b { font-size: 15px; }
+  .tally { gap: 5px; font-size: 12px; }
+  .grid .card { padding: 10px; }
+  .card .t { font-size: 17px; }
+  .card.pt .t { font-size: 26px; }
+  .end .stat b { font-size: 24px; }
+}
+
+/* Tablet na vertical e ecrãs médios */
+@media (min-width: 620px) {
+  .menu-inner { max-width: 760px; }
+  .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  .grid .card { grid-template-rows: 90px auto; padding: 14px; }
+  .grid .card svg { height: 90px; }
+  .card.pt { grid-template-columns: 1fr 120px; padding: 22px; }
+  .card.pt svg { width: 120px; height: 150px; }
+  .card.pt .t { font-size: 36px; }
+  .topbar .title b { font-size: 20px; }
+  .tally { font-size: 15px; gap: 12px; }
+  .ask .target { font-size: clamp(34px, 5vw, 46px); }
+  .tries i { width: 30px; height: 7px; }
+  .tries-note { font-size: 14px; }
+  .end { place-items: center; }
+}
+
+/* Computador: menu em duas colunas */
+@media (min-width: 1000px) {
+  #menu { display: grid; place-items: center; }
+  .menu-inner { max-width: 1120px; flex-direction: row; gap: 48px; align-items: flex-start; }
+  .menu-left { flex: 0 0 360px; }
+  .menu-right { flex: 1; }
+  .brand h1 { font-size: 64px; }
+  .card.pt { grid-template-columns: 1fr; grid-template-rows: 220px auto; }
+  .card.pt svg { width: 100%; height: 220px; order: -1; }
+  .grid .card { grid-template-rows: 120px auto; }
+  .grid .card svg { height: 120px; }
+  .card:hover { border-color: var(--accent); }
+}
+
+/* Jogo com painel lateral: telemóvel deitado, tablet deitado e computador */
+@media (orientation: landscape) and (max-height: 600px), (min-width: 1000px) {
+  #game {
+    grid-template-columns: minmax(0, 1fr) clamp(200px, 30vw, 360px);
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-areas: "top top" "map ask";
+  }
+  .ask {
+    border-top: none; border-left: 1px solid var(--edge-soft);
+    display: flex; flex-direction: column; justify-content: center; gap: 4px;
+    padding-inline: 16px max(16px, env(safe-area-inset-right, 0px));
+  }
+  .ask .target { font-size: clamp(24px, 3.4vw, 44px); overflow-wrap: anywhere; }
+  .end { place-items: center; }
+}
+
+/* Telemóvel deitado: tudo mais compacto na altura */
+@media (orientation: landscape) and (max-height: 600px) {
+  #menu {
+    padding-block: calc(env(safe-area-inset-top, 0px) + 16px) calc(env(safe-area-inset-bottom, 0px) + 16px);
+    padding-inline: max(16px, env(safe-area-inset-left, 0px)) max(16px, env(safe-area-inset-right, 0px));
+  }
+  .menu-inner { max-width: 1000px; flex-direction: row; gap: 20px; align-items: flex-start; }
+  .menu-left { flex: 0 0 min(300px, 38%); gap: 14px; }
+  .menu-right { flex: 1; gap: 14px; }
+  .brand h1 { font-size: 32px; }
+  .brand h1 .br { display: inline; }
+  .brand p { font-size: 14px; }
+  .legend { margin-top: 8px; }
+  .sound-row { margin-top: 10px; }
+  .section-label { margin: 0 2px -6px; }
+  .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .grid .card { grid-template-rows: 54px auto; padding: 10px; }
+  .grid .card svg { height: 54px; }
+  .grid .card .t { font-size: 16px; }
+  .card.pt { grid-template-columns: 1fr 70px; grid-template-rows: auto; padding: 12px 14px; }
+  .card.pt svg { width: 70px; height: 88px; order: 0; }
+  .card.pt .t { font-size: 24px; }
+  .topbar { padding-block: calc(env(safe-area-inset-top, 0px) + 4px) 4px; }
+  .topbar .icon-btn { width: 38px; height: 38px; }
+  .float-btns { top: 8px; gap: 6px; }
+  .float-btns .icon-btn { width: 38px; height: 38px; }
+  .float-btns .sep { height: 0; }
+  .ask { padding-block: 8px calc(env(safe-area-inset-bottom, 0px) + 8px); }
+  .end { padding: 10px; }
+  .end .sheet { padding: 16px; max-width: 520px; }
+  .end h2 { font-size: 24px; }
+  .end .sub, .stats, .missed { margin-bottom: 10px; }
+}
+
 .loading { display: grid; place-items: center; height: 100%; color: var(--muted); }
 
 @media (prefers-reduced-motion: reduce) {
@@ -207,13 +326,24 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 
 <section id="menu" class="screen" hidden>
   <div class="menu-inner">
+   <div class="menu-left">
     <header class="brand">
-      <h1>Aponta no<br>Mapa</h1>
+      <h1>Aponta no <span class="br"></span>Mapa</h1>
       <p>Aparece um nome em baixo. Toca no sítio certo do mapa.</p>
       <div class="legend">
         <span><i style="background:var(--ok)"></i>À primeira</span>
         <span><i style="background:var(--warn)"></i>2–3 tentativas</span>
         <span><i style="background:var(--bad)"></i>Mais de 3</span>
+      </div>
+      <div class="sound-row">
+        <button class="pill" id="m-music" aria-pressed="true">
+          <svg viewBox="0 0 24 24"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/><path class="slash" d="M3 3l18 18"/></svg>
+          Música
+        </button>
+        <button class="pill" id="m-sfx" aria-pressed="true">
+          <svg viewBox="0 0 24 24"><path d="M11 5L6 9H3v6h3l5 4z"/><path class="wave" d="M15.5 8.5a5 5 0 010 7M18.5 5.5a9 9 0 010 13"/><path class="slash" d="M3 3l18 18"/></svg>
+          Sons
+        </button>
       </div>
     </header>
 
@@ -223,11 +353,13 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
         <div class="t">Portugal</div>
         <div class="s" data-best="portugal"></div>
       </div>
-      <svg data-thumb="portugal" width="96" height="120" aria-hidden="true"></svg>
+      <svg data-thumb="portugal" aria-hidden="true"></svg>
     </button>
-
+   </div>
+   <div class="menu-right">
     <div class="section-label">Continentes</div>
     <div class="grid" id="continents"></div>
+   </div>
   </div>
 </section>
 
@@ -253,6 +385,9 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
       <button class="icon-btn" id="zoom-in" aria-label="Aproximar"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
       <button class="icon-btn" id="zoom-out" aria-label="Afastar"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button>
       <button class="icon-btn" id="zoom-reset" aria-label="Ver mapa inteiro"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+      <span class="sep"></span>
+      <button class="icon-btn" id="g-music" aria-label="Música" aria-pressed="true"><svg viewBox="0 0 24 24"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/><path class="slash" d="M3 3l18 18"/></svg></button>
+      <button class="icon-btn" id="g-sfx" aria-label="Sons" aria-pressed="true"><svg viewBox="0 0 24 24"><path d="M11 5L6 9H3v6h3l5 4z"/><path class="wave" d="M15.5 8.5a5 5 0 010 7M18.5 5.5a9 9 0 010 13"/><path class="slash" d="M3 3l18 18"/></svg></button>
     </div>
     <div class="toast" id="toast"></div>
   </div>
@@ -284,6 +419,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 
 <script src="vendor/d3.min.js"></script>
 <script src="vendor/topojson-client.min.js"></script>
+<script src="audio.js"></script>
 <script>
 (() => {
   // Cada modo: nome, projeção (rotação do globo) e caixa lon/lat a enquadrar.
@@ -378,7 +514,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
         <div><div class="t">${MODES[mode].name}</div><div class="s">${n} países</div><div class="s" data-best="${mode}"></div></div>`;
       grid.appendChild(b);
     }
-    document.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', () => startGame(b.dataset.mode)));
+    document.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', () => { Som.play.tap(); startGame(b.dataset.mode); }));
   }
 
   function showMenu() {
@@ -457,6 +593,8 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 
     // Reaplica cores de um jogo em curso (ex.: rodar o ecrã).
     for (const [n, cls] of G.result) G.els.get(n).forEach((el) => el.classList.add('done-' + cls));
+    if (G.misses >= HINT_AFTER && current()) G.els.get(current()).forEach((el) => el.classList.add('hint'));
+    G.size = [w, h];
 
     zoom.scaleExtent([1, G.mode === 'portugal' ? 6 : 14]).translateExtent([[-w * 0.25, -h * 0.25], [w * 1.25, h * 1.25]]);
     svg.call(zoom.transform, d3.zoomIdentity);
@@ -503,6 +641,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
       G.misses++;
       toast(`Isso é ${name}`);
       els.forEach((el) => { el.classList.add('wrong'); setTimeout(() => el.classList.remove('wrong'), 450); });
+      Som.play.wrong();
       if (navigator.vibrate) navigator.vibrate(40);
       if (G.misses >= HINT_AFTER) G.els.get(target).forEach((el) => el.classList.add('hint'));
       renderTries();
@@ -513,6 +652,8 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
     const cls = attempts === 1 ? 'ok' : attempts <= 3 ? 'warn' : 'bad';
     G.result.set(name, cls);
     els.forEach((el) => { el.classList.remove('hint', 'wrong'); el.classList.add('done-' + cls); });
+    G.els.get(target).forEach((el) => el.classList.remove('hint'));
+    Som.play[cls]();
     G.idx++;
     G.misses = 0;
     updateTally();
@@ -550,6 +691,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
     $('target').textContent = `${c.ok}/${total} à primeira`;
     $('tries').innerHTML = ''; $('tries-note').textContent = '';
     $('end').hidden = false;
+    setTimeout(() => Som.play.finish(), 350);
   }
 
   // ---------- controlos ----------
@@ -566,14 +708,35 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
   $('zoom-out').addEventListener('click', () => svg.transition().duration(250).call(zoom.scaleBy, 1 / 1.8));
   $('zoom-reset').addEventListener('click', () => svg.transition().duration(300).call(zoom.transform, d3.zoomIdentity));
 
+  // Música e sons: os botões do menu e do jogo mostram sempre o mesmo estado.
+  const bindToggle = (ids, key, set) => ids.forEach((id) => $(id).addEventListener('click', () => set(!Som.prefs[key])));
+  bindToggle(['m-music', 'g-music'], 'music', (on) => Som.setMusic(on));
+  bindToggle(['m-sfx', 'g-sfx'], 'sfx', (on) => Som.setSfx(on));
+  Som.onChange((p) => {
+    ['m-music', 'g-music'].forEach((id) => $(id).setAttribute('aria-pressed', p.music));
+    ['m-sfx', 'g-sfx'].forEach((id) => $(id).setAttribute('aria-pressed', p.sfx));
+    $('g-music').setAttribute('aria-label', p.music ? 'Desligar música' : 'Ligar música');
+    $('g-sfx').setAttribute('aria-label', p.sfx ? 'Desligar sons' : 'Ligar sons');
+  });
+
+  // Redesenha quando o ecrã muda (rodar o telemóvel, redimensionar a janela).
+  // Pequenas mudanças de altura (barra do navegador a aparecer/esconder) não reiniciam o zoom.
   let resizeTimer;
-  window.addEventListener('resize', () => {
+  const onResize = () => {
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => {
-      if (!$('game').hidden && G) renderMap();
-      else if (!$('menu').hidden) document.querySelectorAll('[data-thumb]').forEach((s) => drawThumb(s, s.dataset.thumb));
-    }, 150);
-  });
+      if (!$('game').hidden && G) {
+        const wrap = $('map-wrap'), [w0, h0] = G.size || [0, 0];
+        if (Math.abs(wrap.clientWidth - w0) > 1 || Math.abs(wrap.clientHeight - h0) > 90) renderMap();
+      } else if (!$('menu').hidden) document.querySelectorAll('[data-thumb]').forEach((s) => drawThumb(s, s.dataset.thumb));
+    }, 120);
+  };
+  if (window.ResizeObserver) {
+    new ResizeObserver(onResize).observe($('map-wrap'));
+    new ResizeObserver(onResize).observe($('menu'));
+  }
+  window.addEventListener('resize', onResize);
+  window.addEventListener('orientationchange', onResize);
 
   // ---------- arranque ----------
   Promise.all([fetch('data/mundo.json').then((r) => r.json()), fetch('data/portugal.json').then((r) => r.json())])

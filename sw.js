@@ -1,9 +1,9 @@
 // Guarda a app em cache para abrir sem rede depois da primeira visita.
-const CACHE = 'aponta-v1';
+const CACHE = 'aponta-v2';
 const FILES = [
   './', 'index.html', 'manifest.webmanifest',
   'data/mundo.json', 'data/portugal.json',
-  'vendor/d3.min.js', 'vendor/topojson-client.min.js',
+  'audio.js', 'vendor/d3.min.js', 'vendor/topojson-client.min.js',
   'icons/icon-180.png', 'icons/icon-192.png', 'icons/icon-512.png',
 ];
 self.addEventListener('install', (e) => {
