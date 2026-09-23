@@ -184,11 +184,10 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .ask {
   background: var(--surface); border-top: 1px solid var(--edge-soft);
   padding-inline: max(16px, env(safe-area-inset-left, 0px)) max(16px, env(safe-area-inset-right, 0px));
-  padding-block: 12px calc(env(safe-area-inset-bottom, 0px) + 14px);
+  padding-block: 10px calc(env(safe-area-inset-bottom, 0px) + 10px);
   text-align: center; z-index: 2;
 }
-.ask .lbl { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
-.ask .target { font: 800 clamp(26px, 8vw, 34px)/1.1 var(--display); margin: 4px 0 8px; text-wrap: balance; letter-spacing: -0.01em; }
+.ask .target { font: 800 clamp(26px, 8vw, 34px)/1.1 var(--display); margin: 0 0 6px; text-wrap: balance; letter-spacing: -0.01em; }
 .ask .target.pop { animation: pop .3s ease; }
 .ask .target { display: flex; align-items: center; justify-content: center; gap: .35em; }
 .ask .target span { min-width: 0; }
@@ -328,7 +327,6 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
     max-width: calc(100% - 2 * (max(12px, env(safe-area-inset-right, 0px)) + 130px));
     background: none; border: none; padding: 0; pointer-events: none;
   }
-  .ask .lbl { flex: none; font-size: 11px; }
   .ask .target { font-size: clamp(17px, 3.2vw, 24px); margin: 0; min-width: 0; }
   .ask .target span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; overflow-wrap: normal; }
   .tries { flex: none; height: auto; gap: 4px; }
@@ -420,8 +418,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
   </div>
 
   <div class="ask" aria-live="polite">
-    <div class="lbl" id="ask-lbl">Toca em</div>
-    <div class="target" id="target"><img class="flag" id="flag" alt="" hidden><span id="target-name">—</span></div>
+    <div class="target" id="target" aria-label="Toca em"><img class="flag" id="flag" alt="" hidden><span id="target-name">—</span></div>
     <div class="tries" id="tries"></div>
     <div class="tries-note" id="tries-note"></div>
   </div>
@@ -762,7 +759,6 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
     if (bad.length) m.innerHTML = `A rever: <strong>${bad.join(', ')}</strong>`;
     const prev = store.get('best:' + G.mode);
     if (!prev || c.ok > prev.ok) store.set('best:' + G.mode, { ok: c.ok, total });
-    $('ask-lbl').textContent = 'Terminado';
     $('target-name').textContent = `${c.ok}/${total} à primeira`;
     $('flag').hidden = true;
     $('tries').innerHTML = ''; $('tries-note').textContent = '';
@@ -779,7 +775,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
     if (history.state && history.state.game && MODES[h]) startGame(h);
     else { history.replaceState(null, '', location.pathname); showMenu(); }
   });
-  $('e-again').addEventListener('click', () => { $('ask-lbl').textContent = 'Toca em'; startGame(G.mode); });
+  $('e-again').addEventListener('click', () => startGame(G.mode));
   $('zoom-in').addEventListener('click', () => svg.transition().duration(250).call(zoom.scaleBy, 1.8));
   $('zoom-out').addEventListener('click', () => svg.transition().duration(250).call(zoom.scaleBy, 1 / 1.8));
   $('zoom-reset').addEventListener('click', () => svg.transition().duration(300).call(zoom.transform, d3.zoomIdentity));
