@@ -190,6 +190,13 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .ask .lbl { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
 .ask .target { font: 800 clamp(26px, 8vw, 34px)/1.1 var(--display); margin: 4px 0 8px; text-wrap: balance; letter-spacing: -0.01em; }
 .ask .target.pop { animation: pop .3s ease; }
+.ask .target { display: flex; align-items: center; justify-content: center; gap: .35em; }
+.ask .target span { min-width: 0; }
+.flag {
+  height: .78em; width: auto; aspect-ratio: 4 / 3; flex: none; border-radius: 3px;
+  box-shadow: 0 0 0 1px var(--edge-soft); object-fit: cover; background: var(--land-off);
+}
+.toast .flag { height: 1em; margin-right: 6px; vertical-align: -2px; border-radius: 2px; }
 @keyframes pop { from { transform: scale(.9); opacity: .3; } }
 .tries { display: flex; justify-content: center; gap: 6px; height: 10px; }
 .tries i { width: 22px; height: 6px; border-radius: 3px; background: var(--land-off); }
@@ -322,10 +329,8 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
     background: none; border: none; padding: 0; pointer-events: none;
   }
   .ask .lbl { flex: none; font-size: 11px; }
-  .ask .target {
-    font-size: clamp(17px, 3.2vw, 24px); margin: 0; min-width: 0;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; overflow-wrap: normal;
-  }
+  .ask .target { font-size: clamp(17px, 3.2vw, 24px); margin: 0; min-width: 0; }
+  .ask .target span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; overflow-wrap: normal; }
   .tries { flex: none; height: auto; gap: 4px; }
   .tries i { width: 14px; height: 5px; }
   .tries-note { display: none; }
@@ -416,7 +421,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 
   <div class="ask" aria-live="polite">
     <div class="lbl" id="ask-lbl">Toca em</div>
-    <div class="target" id="target">—</div>
+    <div class="target" id="target"><img class="flag" id="flag" alt="" hidden><span id="target-name">—</span></div>
     <div class="tries" id="tries"></div>
     <div class="tries-note" id="tries-note"></div>
   </div>
@@ -460,6 +465,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
   const EARTH_R2 = 6371 * 6371; // km², para converter a área esférica do d3
 
   let world = [], portugal = [];
+  const FLAGS = new Map(); // nome do país -> código da bandeira
 
   // ---------- helpers ----------
   const $ = (id) => document.getElementById(id);
@@ -655,9 +661,20 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 
   function current() { return G.queue[G.idx]; }
 
+  // Bandeira do país (não há para os distritos). Carrega já a do próximo, para aparecer sem atraso.
+  function flagUrl(name) { const c = FLAGS.get(name); return c ? `flags/${c}.svg` : null; }
+  function setFlag(img, name) {
+    const url = flagUrl(name);
+    img.hidden = !url;
+    if (url) { img.src = url; img.alt = `Bandeira: ${name}`; } else img.removeAttribute('src');
+  }
+
   function showTarget() {
     const t = $('target');
-    t.textContent = current();
+    $('target-name').textContent = current();
+    setFlag($('flag'), current());
+    const next = flagUrl(G.queue[G.idx + 1]);
+    if (next) new Image().src = next;
     t.classList.remove('pop'); void t.offsetWidth; t.classList.add('pop');
     renderTries();
   }
@@ -676,9 +693,14 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
   }
 
   let toastTimer;
-  function toast(msg) {
+  function toast(msg, name) {
     const t = $('toast');
     t.textContent = msg;
+    if (flagUrl(name)) {
+      const img = document.createElement('img');
+      img.className = 'flag'; img.alt = ''; img.src = flagUrl(name);
+      t.prepend(img);
+    }
     t.classList.add('show');
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => t.classList.remove('show'), 1300);
@@ -686,13 +708,13 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 
   function onPick(name) {
     if (!G || G.idx >= G.queue.length) return;
-    if (G.result.has(name)) { toast(name); return; }
+    if (G.result.has(name)) { toast(name, name); return; }
     const target = current();
     const els = G.els.get(name);
 
     if (name !== target) {
       G.misses++;
-      toast(`Isso é ${name}`);
+      toast(`Isso é ${name}`, name);
       els.forEach((el) => { el.classList.add('wrong'); setTimeout(() => el.classList.remove('wrong'), 450); });
       Som.play.wrong();
       if (navigator.vibrate) navigator.vibrate(40);
@@ -741,7 +763,8 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
     const prev = store.get('best:' + G.mode);
     if (!prev || c.ok > prev.ok) store.set('best:' + G.mode, { ok: c.ok, total });
     $('ask-lbl').textContent = 'Terminado';
-    $('target').textContent = `${c.ok}/${total} à primeira`;
+    $('target-name').textContent = `${c.ok}/${total} à primeira`;
+    $('flag').hidden = true;
     $('tries').innerHTML = ''; $('tries-note').textContent = '';
     $('end').hidden = false;
     setTimeout(() => Som.play.finish(), 350);
@@ -795,6 +818,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
   Promise.all([fetch('data/mundo.json').then((r) => r.json()), fetch('data/portugal.json').then((r) => r.json())])
     .then(([topo, pt]) => {
       world = topojson.feature(topo, topo.objects.countries).features;
+      for (const f of world) if (f.properties.f) FLAGS.set(f.properties.n, f.properties.f);
       portugal = pt.features.map((f) => rewind({ type: 'Feature', properties: { n: f.properties.name }, geometry: f.geometry }));
       $('loading').hidden = true;
       buildMenu();
